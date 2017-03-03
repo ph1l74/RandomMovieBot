@@ -1,59 +1,55 @@
-from urllib.request import Request, urlopen
+import urllib.request
 from lxml import etree
 from lxml import html
 from bs4 import BeautifulSoup as bs
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import re
 
-filmlist = {"Title" : [],
-            "Year" : [],
-            "Director" : [],
-            "Tags" : [],
-            "Number": []
-            }
-
-#userID = "56310167"
-userID = "2831835"
-
-#url='http://rss.imdb.com/user/ur' + userID + '/watchlist'
-url = 'https://www.kinopoisk.ru/user/' + userID + '/movies/list/sort/default/vector/desc/perpage/200/'
-
 def getList(URL):
-    #pattern = re.compile(r"(tt[0-9]{7})")
-    page = urlopen(URL).read()
+    filmList = {'IMDB': []}
+    filmCount = 0
 
-    print (URL)
+    page = urllib.request.urlopen(URL)
+    page_parsed = bs(page, 'lxml')
 
-    if page:
-        print(URL+ " opened")
-    else:
-        print("URL Opening failed")
+    for title_td in page_parsed.find_all('td', "titleColumn"):
+        for title_link in title_td.find_all('a'):
+            filmCount += 1
+            title_link = title_link.get('href')
+            title_pattern = re.compile('(tt\d{1,})')
+            search = re.search(title_pattern, title_link)
+            title = search.group()
+            filmList['IMDB'].append(title)
+    page = urllib.request.urlcleanup()
+    return filmList, filmCount
 
-    parsed_page = bs(page, "lxml")
-    if page:
-        print(URL+ " parsed")
-    else:
-        print("URL Parsed Failed")
+def getListGenre(URL):
+        filmList = {'IMDB': []}
+        filmCount = 0
 
-    for item in parsed_page.find_all('a', 'name'):
-        print (item)
-    #listofitems =
-    #print (listofitems)
-    #for item in listofitems:
-    #    string = str(etree.tostring(item))
-        #search = re.search(pattern, string)
-    #    i = 0
-    #    print (string)
-        #print(search.group())
-        #while i < len(search):
-        #    print (search.group(i))
-        #    i+=1
+        page = urllib.request.urlopen(URL)
+        page_parsed = bs(page, 'lxml')
 
-        #string = string[string.find('tt'):string.find('tt')+9:]
-        #if string not in filmlist["Number"]:
-        #    filmlist["Number"].append(string)
-        #print(filmlist["Number"])
-
-getList(url)
+        for title_td in page_parsed.find_all('td'):
+            #print (title_td)
+            for title_link in title_td.find_all('a'):
+                filmCount += 1
+                title_link = title_link.get('href')
+                print(title_link)
+                title_pattern = re.compile('(tt\d{1,})')
+                search = re.search(title_pattern, title_link)
+                title = search.groups()
+                if title:
+                    if title not in filmList['IMDB']:
+                        filmList['IMDB'].append(title)
+        page = urllib.request.urlcleanup()
+        #print(filmList)
+        #print(filmCount)
+        return filmList, filmCount
 
 #https://www.kinopoisk.ru/user/318061/list/1/filtr/all/sort/order/page/1/
 

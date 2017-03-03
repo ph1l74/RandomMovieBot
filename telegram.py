@@ -12,6 +12,7 @@ import json
 print("Modules imported")
 
 bot = telebot.TeleBot(config.token)
+bot
 
 if bot:
     print("Bot started")
@@ -30,6 +31,7 @@ def fileOpen(filename):
         filmList["IMDB"].append(str(row['const']))
         filmNumber += 1
     filmNumber -= 1
+    ftpstream = urllib.request.urlcleanup()
     print("Список успешно загружен\nЭлементов в списке: " + str(filmNumber))
     return filmList, filmNumber
 
@@ -60,18 +62,44 @@ def getRandom(filmList):
 @bot.message_handler(content_types='text')
 def answer(message):
     global status, filmList
+    setnull = False
     print("%s: %s: %s" % (message.chat.id, message.chat.first_name, message.text))
     if message.chat.id not in status:
         print ("New chat, id: %s" % message.chat.id)
     if message.chat.id in status:
+        if message.text == "/setnull":
+            print ("null set")
+            setnull = True
         if message.text == "/random":
             filmIMDB = getRandom(filmList)
             filmTitle, filmYear, filmDirector, filmGenre, filmCountry, filmPlot, filmRuntime, filmRating, filmScore, filmURL, filmPoster = getInfo(filmIMDB)
-            answer1 = filmTitle + " (" + filmYear + ")\n" + filmDirector + "\n" + filmGenre + " / " + filmCountry
-            answer2 = "\n\n" + filmPlot + "\n\n" + filmRuntime + " / " + filmRating + " / " + filmScore
+            try:
+                if filmScore == "N/A":
+                    emoji = u'\U00002753'
+                elif 0 < int(filmScore) < 20:
+                    emoji = u'\U0001F232'
+                elif 21 < int(filmScore) < 45:
+                    emoji = u'\U0001F21A'
+                elif 46 < int(filmScore) < 60:
+                    emoji = u'\U0001F233'
+                elif 61 < int(filmScore) < 80:
+                    emoji = u'\U0001F22F'
+                elif 81 < int(filmScore) < 100:
+                    emoji = u'\U0001F4AF'
+                answer1 = filmTitle + " (" + filmYear + ")\n" + filmDirector + "\n" + filmGenre + " / " + filmCountry
+                answer2 = "\n\n" + filmPlot + "\n\n" + filmRuntime + " / " + filmRating + " / " + filmScore + " " + emoji
+            except UnboundLocalError:
+                pass
             answer = answer1+answer2
             keyboard = telebot.types.InlineKeyboardMarkup()
-            keyboard.add(telebot.types.InlineKeyboardButton(text="Подбробнее о " + filmTitle, url=filmURL))
+
+            if setnull:
+                filmURL = False
+                print(filmURL)
+            try:
+                keyboard.add(telebot.types.InlineKeyboardButton(text="Подбробнее о " + filmTitle, url=filmURL))
+            except ValueError:
+                print (filmURL)
             DLLink = filmTitle + " " + filmYear
             RuTracker = 'http://rutracker.org/forum/tracker.php?nm=' + re.sub(r' +', '%20', DLLink)
             PirateBay = "https://thepiratebay.org/search/" + re.sub(r' +', '%20', DLLink)
