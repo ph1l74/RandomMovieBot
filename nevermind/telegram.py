@@ -1,13 +1,14 @@
-import telebot
-import config
-import random
-import func
-import csv
-import urllib
 import codecs
-import re
-from urllib.request import Request
+import csv
 import json
+import random
+import re
+import urllib
+from urllib.request import Request
+
+import telebot
+
+import config
 
 print("Modules imported")
 

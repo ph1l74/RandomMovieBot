@@ -1,25 +1,34 @@
 import telebot
 import config
 import random
-import func
-import csv
+import datetime
 import urllib
 import codecs
 import re
-from urllib.request import Request
 import json
 import imdbparser as imdb
+from urllib.request import Request
 
 print("Modules imported")
 
+# defining bot:
+
 bot = telebot.TeleBot(config.token)
 
-if bot:
-    print("Bot started")
+# list of clients:
 
-status = []
+clients = []
 
-filmList = {}
+# default dictionary that will be filled:
+
+film_list = {}
+
+# date for logs:
+
+now = datetime.datetime.now()
+date = datetime.time(now.hour, now.minute, now.second)
+
+# different URLs of film lists:
 
 urls = {'Top 250': 'http://www.imdb.com/chart/top',
         'Most Popular': 'http://www.imdb.com/chart/moviemeter',
@@ -48,82 +57,104 @@ urls = {'Top 250': 'http://www.imdb.com/chart/top',
         'War': 'http://www.imdb.com/genre/war',
         'Western': 'http://www.imdb.com/genre/western'}
 
-def getInfo(title):
-    jsonurl = "http://www.omdbapi.com/?i=" + title+ "&plot=short&r=json"
+# defining funcs:
+
+
+def get_info(title):
+    # making URL for OMDB API request
+    jsonurl = "http://www.omdbapi.com/?i=" + title + "&plot=short&r=json"
+    # getting JSON-response
     response = urllib.request.urlopen(jsonurl)
+    # decode response to UTF-8
     reader = codecs.getreader('utf-8')
+    # getting data from decoded response
     data = json.load(reader(response))
-    filmTitle = data['Title']
-    filmYear = data['Year']
-    filmDirector = data['Director']
-    filmGenre = data['Genre']
-    filmCountry = data['Country']
-    filmPlot = data['Plot']
-    filmRuntime = data['Runtime']
-    filmRating = data['imdbRating']
-    filmScore = data['Metascore']
-    filmURL = "http://www.imdb.com/title/" + str(data['imdbID'])
-    filmPoster = data['Poster']
-    return filmTitle, filmYear, filmDirector, filmGenre, filmCountry, filmPlot, filmRuntime, filmRating, filmScore, filmURL, filmPoster
+    # writing info from data in variables
+    film_title = data['Title']
+    film_year = data['Year']
+    film_dir = data['Director']
+    film_genre = data['Genre']
+    film_country = data['Country']
+    film_plot = data['Plot']
+    film_rt = data['Runtime']
+    film_rating = data['imdbRating']
+    film_score = data['Metascore']
+    film_url = "http://www.imdb.com/title/" + str(data['imdbID'])
+    film_img = data['Poster']
+    return film_title, film_year, film_dir, film_genre, film_country, film_plot, film_rt, film_rating, film_score, \
+           film_url, film_img
 
-def getRandom(filmList):
-    filmIMDB = str(random.choice(filmList["IMDB"]))
-    return filmIMDB
 
-def sendFLStatus(filmCount, message):
-    answer1 = 'Список успешно загружен.\nВ списке ' + str(filmCount) + " элементов."
+def get_random(film_list):
+    # chosing random imdb-id from film_list
+    film_imdb = str(random.choice(film_list["IMDB"]))
+    return film_imdb
+
+
+def send_fl_status(film_count, message):
+    answer1 = 'Список успешно загружен.\nВ списке ' + str(film_count) + " элементов."
     answer2 = '\nТеперь можете выбрать случайный фильмы командой /random'
     answer = answer1 + answer2
     bot.send_message(message.chat.id, answer)
 
+# message handler for text message:
+
+
 @bot.message_handler(content_types='text')
 def answer(message):
-    global filmList
+    global film_list, date
+    emoji = u'\U00002753'
 
+    if message.chat.id not in clients:
+        clients.append(message.chat.id)
+        print("New chat:" + str(message.chat.id))
+
+    print(str(date) + ":" + str(message.chat.id) + ":" + str(message.chat.first_name) + ": " + str(message.text))
 
     if "/random" in message.text:
-        if filmList:
-            filmIMDB = getRandom(filmList)
-            filmTitle, filmYear, filmDirector, filmGenre, filmCountry, filmPlot, filmRuntime, filmRating, filmScore, filmURL, filmPoster = getInfo(
-                filmIMDB)
+        if film_list:
+            film_imdb = get_random(film_list)
+            film_title, film_year, film_dir, film_genre, film_country, film_plot, film_rt, film_rating, film_score, \
+                film_url, film_img = get_info(film_imdb)
             try:
-                if filmScore == "N/A":
+                if film_score == "N/A":
                     emoji = u'\U00002753'
-                elif 0 < int(filmScore) < 20:
+                elif 0 < int(film_score) < 20:
                     emoji = u'\U0001F232'
-                elif 21 < int(filmScore) < 45:
+                elif 21 < int(film_score) < 45:
                     emoji = u'\U0001F21A'
-                elif 46 < int(filmScore) < 60:
+                elif 46 < int(film_score) < 60:
                     emoji = u'\U0001F233'
-                elif 61 < int(filmScore) < 80:
+                elif 61 < int(film_score) < 80:
                     emoji = u'\U0001F22F'
-                elif 81 < int(filmScore) < 100:
+                elif 81 < int(film_score) < 100:
                     emoji = u'\U0001F4AF'
-                answer1 = filmTitle + " (" + filmYear + ")\n" + filmDirector + "\n" + filmGenre + " / " + filmCountry
-                answer2 = "\n\n" + filmPlot + "\n\n" + filmRuntime + " / " + filmRating + " / " + filmScore + " " + emoji
+                answer1 = film_title + " (" + film_year + ")\n" + film_dir + "\n" + film_genre + " / " + film_country
+                answer2 = "\n\n" + film_plot + "\n\n" + film_rt + " / " + film_rating + " / " + film_score + " " + emoji
                 answer = answer1 + answer2
             except UnboundLocalError:
-                answer1 = filmTitle + " (" + filmYear + ")\n" + filmDirector + "\n" + filmGenre + " / " + filmCountry
-                answer2 = "\n\n" + filmPlot + "\n\n" + filmRuntime + " / " + filmRating + " / " + filmScore
+                answer1 = film_title + " (" + film_year + ")\n" + film_dir + "\n" + film_genre + " / " + film_country
+                answer2 = "\n\n" + film_plot + "\n\n" + film_rt + " / " + film_rating + " / " + film_score
                 answer = answer1 + answer2
             try:
                 keyboard = telebot.types.InlineKeyboardMarkup()
-                keyboard.add(telebot.types.InlineKeyboardButton(text="Подбробнее о " + filmTitle, url=filmURL))
+                keyboard.add(telebot.types.InlineKeyboardButton(text="Подбробнее о " + film_title, url=film_url))
             except ValueError:
-                print(filmURL)
-            DLLink = filmTitle + " " + filmYear
-            RuTracker = 'http://rutracker.org/forum/tracker.php?nm=' + re.sub(r' +', '%20', DLLink)
-            PirateBay = "https://thepiratebay.org/search/" + re.sub(r' +', '%20', DLLink)
-            RarBG = "https://rarbg.to/torrents.php?search=" + re.sub(r' +', '+',
-             DLLink) + "&category%5B%5D=14&category%5B%5D=48&category%5B%5D=17&category%5B%5D=44&category%5B%5D=45&category%5B%5D=47&category%5B%5D=42&category%5B%5D=46"
-            keyboard.add(telebot.types.InlineKeyboardButton(text="Искать на rutracker.org", url=RuTracker))
-            keyboard.add(telebot.types.InlineKeyboardButton(text="Искать на piratebay.org", url=PirateBay))
-            keyboard.add(telebot.types.InlineKeyboardButton(text="Искать на rarbg.com", url=RarBG))
-            poster = urllib.request.urlopen(filmPoster)
+                print(film_url)
+            dll_link = film_title + " " + film_year
+            rutracker = 'http://rutracker.org/forum/tracker.php?nm=' + re.sub(r' +', '%20', dll_link)
+            piratebay = "https://thepiratebay.org/search/" + re.sub(r' +', '%20', dll_link)
+            rarbg = "https://rarbg.to/torrents.php?search=" + re.sub(r' +', '+',
+             dll_link) + "&category%5B%5D=14&category%5B%5D=48&category%5B%5D=17&category%5B%5D=44&category%5B%5D=45&category%5B%5D=47&category%5B%5D=42&category%5B%5D=46"
+            keyboard.add(telebot.types.InlineKeyboardButton(text="Искать на rutracker.org", url=rutracker))
+            keyboard.add(telebot.types.InlineKeyboardButton(text="Искать на piratebay.org", url=piratebay))
+            keyboard.add(telebot.types.InlineKeyboardButton(text="Искать на rarbg.com", url=rarbg))
+            poster = urllib.request.urlopen(film_img)
             bot.send_photo(message.chat.id, poster)
             bot.send_message(message.chat.id, answer, reply_markup=keyboard)
             bot.send_message(message.chat.id, "Не то? Нажимай на /random")
             bot.send_message(message.chat.id, "Другой лист? Нажимай на /lists")
+            print(str(date) + ":" + str(message.chat.id) + ":Bot: " + film_title + " (" + str(film_year) + ") " + "URL: " + film_url)
         else:
             if message.chat.first_name:
                 answer1 = "Привет, " + str(message.chat.first_name) + ". Ты еще не выбрал список фильмов."
@@ -150,134 +181,138 @@ def answer(message):
     if "/imdb250" in message.text:
         answer = 'Вы выбрали список "Топ 250 фильмов IMDB"\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getList(urls['Top 250'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list(urls['Top 250'])
+        send_fl_status(film_count, message)
     if "/imdbmp" in message.text:
         answer = 'Вы выбрали список "Самые популярные фильмы IMDB"\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getList(urls['Most Popular'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list(urls['Most Popular'])
+        send_fl_status(film_count, message)
     if "/imdbeng" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы на Английском"\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListge(urls['Top English'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list(urls['Top English'])
+        send_fl_status(film_count, message)
     if "/gactions" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре экшн."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Actions'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Actions'])
+        send_fl_status(film_count, message)
     if "/ganimations" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре анимация."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Animation'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Animation'])
+        send_fl_status(film_count, message)
     if "/gadventure" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре приключения."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Adventure'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Adventure'])
+        send_fl_status(film_count, message)
     if "/gbio" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре биографический фильм."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Biography'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Biography'])
+        send_fl_status(film_count, message)
     if "/gcomedy" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре комедия."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Comedy'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Comedy'])
+        send_fl_status(film_count, message)
     if "/gcrime" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре криминал."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Crime'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Crime'])
+        send_fl_status(film_count, message)
     if "/gdoc" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре документальный фильм."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Documentary'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Documentary'])
+        send_fl_status(film_count, message)
     if "/gdrama" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре драма."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Drama'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Drama'])
+        send_fl_status(film_count, message)
     if "/gfamily" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре фильм для все семьи."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Family'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Family'])
+        send_fl_status(film_count, message)
     if "/gfantasy" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре фэнтези."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Fantasy'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Fantasy'])
+        send_fl_status(film_count, message)
     if "/gnoir" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре фильм-нуар."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Film-Noir'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Film-Noir'])
+        send_fl_status(film_count, message)
     if "/ghistory" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре исторический фильм."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['History'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['History'])
+        send_fl_status(film_count, message)
     if "/ghorror" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре хоррор."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Horror'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Horror'])
+        send_fl_status(film_count, message)
     if "/gmusic" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре музыкальный фильм."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Music'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Music'])
+        send_fl_status(film_count, message)
     if "/gmusic" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре мюзикл."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Musical'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Musical'])
+        send_fl_status(film_count, message)
     if "/gmystery" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре детектив"\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Mystery'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Mystery'])
+        send_fl_status(film_count, message)
     if "/gromance" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре романтический фильм."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Romance'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Romance'])
+        send_fl_status(film_count, message)
     if "/gscifi" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре научная фантастика."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Sci-Fi'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Sci-Fi'])
+        send_fl_status(film_count, message)
     if "/gsport" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре спортивный фильм."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Sport'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Sport'])
+        send_fl_status(film_count, message)
     if "/gthriller" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре триллер."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Thriller'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Thriller'])
+        send_fl_status(film_count, message)
     if "/gwar" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре фильм про войну."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['War'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['War'])
+        send_fl_status(film_count, message)
     if "/gwestern" in message.text:
         answer = 'Вы выбрали список "Лучшие фильмы в жанре вестерн."\nПодождите, пока список загрузится.'
         bot.send_message(message.chat.id, answer)
-        filmList, filmCount = imdb.getListGenre(urls['Western'])
-        sendFLStatus(filmCount, message)
+        film_list, film_count = imdb.get_list_genre(urls['Western'])
+        send_fl_status(film_count, message)
+
+# check for message doc type:
+
 
 @bot.message_handler(content_types='document')
 def handle_csv(message):
-    type = message.document.mime_type
-    bot.send_message(message.chat.id, "Это %s. Я такие файлы читать не умею." %type)
+    bot.send_message(message.chat.id, "Я с файлами не работаю")
+
+# starting bot:
 
 if __name__ == '__main__':
+    print("Bot started")
     bot.polling(none_stop=True)
-

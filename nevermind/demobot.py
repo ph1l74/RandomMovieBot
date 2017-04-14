@@ -1,14 +1,9 @@
-import telebot
-import config
-import random
-import func
-import csv
-import urllib
-import codecs
 import re
-from urllib.request import Request
-import json
-import kinoparser
+
+import telebot
+
+import config
+from nevermind import kinoparser
 
 print("Modules imported")
 
